@@ -1,29 +1,43 @@
 <?php
 require 'vendor/autoload.php';
-$httpClient = new \GuzzleHttp\Client();
+
+use GuzzleHttp\Client;
+
+$httpClient = new Client();
 $response = $httpClient->get('https://www.detik.com/terpopuler');
 $htmlString = (string) $response->getBody();
-//add this line to suppress any warnings
+
+// Suppress any warnings
 libxml_use_internal_errors(true);
+
+// Parse the HTML content
 $doc = new DOMDocument();
 $doc->loadHTML($htmlString);
 $xpath = new DOMXPath($doc);
-$titles = $xpath->evaluate('//article//h3/a');
-$links = $xpath->evaluate('//article//h3/a/@href');
-//$img = $xpath->evaluate('//article//span/img/@src');
-    foreach ($titles as $key => $title) {
-        $title = $title->textContent;
-        $url = $links[$key]->textContent;
-        //$img = $img[$key]->textContent;
-        //$output = array("title"=>$title->textContent, "links"=>$links[$key]->textContent);
-        $output[] = array(
-            'result' => array(
-            'title' => $title,
-            'url' => $url,
-            //'image' => $img
-            ),
-            );
-            $ress = json_encode($output, JSON_PRETTY_PRINT).PHP_EOL;
-    }
-    echo $ress.PHP_EOL;
-?>
+
+// Extract titles, links, and images
+$titles = $xpath->query('//article//h3/a');
+$links = $xpath->query('//article//h3/a/@href');
+$images = $xpath->query('//article//span/img/@src');
+
+$output = [];
+
+foreach ($titles as $key => $titleNode) {
+    // Check if link and image nodes exist for the current title
+    $urlNode = $links->item($key);
+    $imgNode = $images->item($key);
+
+    $title = $titleNode->textContent;
+    $url = $urlNode ? $urlNode->textContent : null;
+    $image = $imgNode ? $imgNode->textContent : null;
+
+    $output[] = [
+        'title' => $title,
+        'url' => $url,
+        'image' => $image
+    ];
+}
+
+// Pretty-print the JSON output
+header('Content-Type: application/json');
+echo json_encode($output, JSON_PRETTY_PRINT);
